@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:vet_connect/online_payment.dart';
 
@@ -29,37 +28,20 @@ class PaymentOptionsPage extends StatelessWidget {
       'paymentStatus': paymentMethod == "Pay at Clinic" ? "Confirmed" : "Pending",
     });
 
-    // Store appointment ID for reference
-    appointmentId = appointmentRef.id;
-
-    // Navigate to payment page if online, or return if paying at clinic
-    if (paymentMethod == "Online Payment") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => OnlinePaymentPage(
-            vetName: vetName,
-            dateTime: dateTime,
-            fee: fee,
-            appointmentId: appointmentId!,
+    // Navigate to confirmation screen or show confirmation
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Appointment Confirmed"),
+        content: const Text("Your appointment is confirmed. Please pay at the clinic."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("OK"),
           ),
-        ),
-      );
-    } else {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text("Appointment Confirmed"),
-          content: const Text("Your appointment is confirmed. Please pay at the clinic."),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("OK"),
-            ),
-          ],
-        ),
-      );
-    }
+        ],
+      ),
+    );
   }
 
   @override

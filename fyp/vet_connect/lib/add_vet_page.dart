@@ -109,30 +109,6 @@ class _AddVetPageState extends State<AddVetPage> {
     }
   }
 
-  Future<void> _pickOpeningTime() async {
-    final TimeOfDay? time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (time != null) {
-      setState(() {
-        _openingTimeController.text = time.format(context);
-      });
-    }
-  }
-
-  Future<void> _pickClosingTime() async {
-    final TimeOfDay? time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (time != null) {
-      setState(() {
-        _closingTimeController.text = time.format(context);
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -323,36 +323,36 @@ class _HomePageState extends State<HomePage> {
                         width: 80,
                         height: 80,
                         fit: BoxFit.cover,
-                      )
-                    : Image.asset(
-                        'assets/default_vet_image.png',
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                      ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Dr. ${vet.name}',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.location_on, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    vet.address,
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                    )
+                  : Image.asset(
+                      'assets/default_vet_image.png',
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                    ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Dr. ${vet.name}',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.location_on, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  vet.address,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
