@@ -10,6 +10,7 @@ import 'vet_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'list_of_pets_with_appointment.dart'; // Import the new page
 import 'dart:io';
+import 'appointments_for_vets.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,12 +24,15 @@ class _HomePageState extends State<HomePage> {
 
   // Fetch vet data as a stream from Firestore
   Stream<List<VetModel>> _fetchVets() {
-    return _firestore.collection('vets').snapshots().map((snapshot) =>
-        snapshot.docs.map((doc) {
-          var vet = VetModel.fromJson(doc.data());
-          vet.id = doc.id; // Assign document ID to vet for updating or deleting
-          return vet;
-        }).toList());
+    return _firestore
+        .collection('vets')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              var vet = VetModel.fromJson(doc.data());
+              vet.id =
+                  doc.id; // Assign document ID to vet for updating or deleting
+              return vet;
+            }).toList());
   }
 
   void _addOrEditVet([VetModel? vet]) {
@@ -38,7 +42,10 @@ class _HomePageState extends State<HomePage> {
           onSave: (vet) async {
             if (vet.id.isNotEmpty) {
               // Update the vet in Firestore
-              await _firestore.collection('vets').doc(vet.id).update(vet.toJson());
+              await _firestore
+                  .collection('vets')
+                  .doc(vet.id)
+                  .update(vet.toJson());
             } else {
               // Add a new vet to Firestore
               await _firestore.collection('vets').add(vet.toJson());
@@ -66,7 +73,9 @@ class _HomePageState extends State<HomePage> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+            if (snapshot.hasError ||
+                !snapshot.hasData ||
+                snapshot.data!.isEmpty) {
               return const Center(child: Text('No vets to delete.'));
             }
 
@@ -172,7 +181,7 @@ class _HomePageState extends State<HomePage> {
                       context,
                       Icons.schedule,
                       'appointment\nschedules',
-                      AppointmentSchedulesPage(),
+                      AppointmentsForVetsPage(vetId: "sampleVetId"),
                     ),
                     const SizedBox(width: 10),
                     _buildCategoryButton(
@@ -293,7 +302,8 @@ class _HomePageState extends State<HomePage> {
           MaterialPageRoute(
             builder: (context) => VetProfilePage(
               vet: vet,
-              onUpdate: (updatedVet) => _addOrEditVet(updatedVet), onBookAppointment: () {  },
+              onUpdate: (updatedVet) => _addOrEditVet(updatedVet),
+              onBookAppointment: () {},
             ),
           ),
         );
@@ -316,43 +326,53 @@ class _HomePageState extends State<HomePage> {
           ),
           child: Column(
             children: [
-              ClipOval(
-                child: vet.imagePath.isNotEmpty
-                    ? Image.network(
-                        vet.imagePath,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                    )
-                  : Image.asset(
-                      'assets/default_vet_image.png',
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                    ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Dr. ${vet.name}',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.location_on, size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  vet.address,
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ],
-            ),
-          ],
+              //ClipOval(
+              //child: vet.imagePath != null && vet.imagePath.isNotEmpty
+              //? Image.network(
+              // vet.imagePath,
+              // width: 80,
+              //height: 80,
+              // fit: BoxFit.cover,
+              //errorBuilder: (context, error, stackTrace) {
+              // Fallback to default image if URL fails
+              //return Image.asset(
+              //'assets/default_vet_image.png',
+              //width: 80,
+              // height: 80,
+              // fit: BoxFit.cover,
+              //);
+              //},
+              //)
+              //: //Image.asset(
+              //'assets/default_vet_image.png',
+              //width: 80,
+              //height: 80,
+              //fit: BoxFit.cover,
+              //),
+              //),
+              const SizedBox(height: 8),
+              Text(
+                'Dr. ${vet.name}',
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.location_on, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    vet.address,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 }

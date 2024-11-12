@@ -24,15 +24,15 @@ class DetailsOfTheVetPage extends StatelessWidget {
             return const Center(child: Text("Vet details not found"));
           }
 
-          final vet = snapshot.data!.data() as Map<String, dynamic>? ?? {}; // Get data as a map with default empty map
-
-          // Access fields with default values if they are missing
+          final vet = snapshot.data!.data() as Map<String, dynamic>? ?? {};
           final vetName = vet['name'] ?? 'No name available';
           final vetDescription = vet['description'] ?? 'No description available';
           final vetAddress = vet['address'] ?? 'No address available';
-          final vetPhoneNumber = vet['phoneNumber'] ?? 'No phone number available';
+          final vetPhoneNumber = vet['phone'] ?? 'No phone number available';
           final vetEmail = vet['email'] ?? 'No email available';
           final vetImage = vet['imageUrl'];
+          final fee = vet['fee'] ?? 'Not available';
+          final availableSlots = (vet['availableSlots'] as List<dynamic>?)?.cast<String>() ?? [];
 
           return Padding(
             padding: const EdgeInsets.all(16.0),
@@ -75,6 +75,24 @@ class DetailsOfTheVetPage extends StatelessWidget {
                 Text(
                   'Email: $vetEmail',
                   style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Consultation Fee: \$${fee.toString()}',
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Available Time Slots:',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                Wrap(
+                  spacing: 8,
+                  children: availableSlots.map((slot) {
+                    return Chip(
+                      label: Text(slot),
+                    );
+                  }).toList(),
                 ),
                 const Spacer(),
                 Center(

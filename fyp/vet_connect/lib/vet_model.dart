@@ -7,7 +7,7 @@ class VetModel {
   String website;
   String phone;
   String email;
-  String imagePath;
+  String imagePath; 
   bool isEmergencyAvailable;
 
   VetModel({

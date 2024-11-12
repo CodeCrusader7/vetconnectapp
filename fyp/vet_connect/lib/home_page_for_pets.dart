@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:vet_connect/PetListPage.dart';
 import 'package:vet_connect/drawer.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:vet_connect/appointment_schedules.dart';
-import 'package:vet_connect/emergency.dart';
-import 'package:vet_connect/online_consultation.dart';
-import 'vet_profile_page.dart';
+import 'PetListPage.dart';
+import 'appointment_schedules.dart';
+import 'online_consultation.dart';
+import 'emergency.dart';
+import 'vet_profile_page.dart'; // Import the VetProfilePage
 import 'vet_model.dart';
+import 'dart:io';
 
 class HomePageForPets extends StatefulWidget {
   const HomePageForPets({super.key});
@@ -16,16 +16,12 @@ class HomePageForPets extends StatefulWidget {
 }
 
 class _HomePageForPetsState extends State<HomePageForPets> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  List<VetModel> vets = [];
 
-  // Stream to fetch vets data from Firestore
-  Stream<List<VetModel>> _fetchVets() {
-    return _firestore.collection('vets').snapshots().map((snapshot) =>
-        snapshot.docs.map((doc) {
-          var vet = VetModel.fromJson(doc.data());
-          vet.id = doc.id; // Assign document ID to vet for updates/deletions
-          return vet;
-        }).toList());
+  void _updateVet(int index, VetModel updatedVet) {
+    setState(() {
+      vets[index] = updatedVet;
+    });
   }
 
   @override
@@ -63,79 +59,60 @@ class _HomePageForPetsState extends State<HomePageForPets> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          _buildCategoryButtons(context),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildCategoryButton(
+                  context,
+                  Icons.schedule,
+                  'appointment\nschedules',
+                  AppointmentSchedulesPage(),
+                ),
+                const SizedBox(width: 10),
+                _buildCategoryButton(
+                  context,
+                  Icons.chat,
+                  'online\nconsultation',
+                  OnlineConsultationPage(),
+                ),
+                const SizedBox(width: 10),
+                _buildCategoryButton(
+                  context,
+                  Icons.pets,
+                  'pet\nprofiles',
+                  PetListPage(), // Navigate to the PetListPage
+                ),
+                const SizedBox(width: 10),
+                _buildCategoryButton(
+                  context,
+                  Icons.local_hospital,
+                  'emergency \nservices',
+                  EmergencyPage(),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 16),
           const Text(
             'Veterinary',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          StreamBuilder<List<VetModel>>(
-            stream: _fetchVets(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (snapshot.hasError || !snapshot.hasData) {
-                return const Center(child: Text('Failed to load vets.'));
-              }
-
-              final vets = snapshot.data!;
-
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.75,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                ),
-                itemCount: vets.length,
-                itemBuilder: (context, index) {
-                  return _buildVeterinaryCard(context, vets[index]);
-                },
-              );
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.75,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
+            itemCount: vets.length,
+            itemBuilder: (context, index) {
+              return _buildVeterinaryCard(context, vets[index], index);
             },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryButtons(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildCategoryButton(
-            context,
-            Icons.schedule,
-            'appointment\nschedules',
-            AppointmentSchedulesPage(),
-          ),
-          const SizedBox(width: 10),
-          _buildCategoryButton(
-            context,
-            Icons.chat,
-            'online\nconsultation',
-            OnlineConsultationPage(),
-          ),
-           const SizedBox(width: 10),
-                    _buildCategoryButton(
-                      context,
-                      Icons.pets,
-                      'pet\nprofiles',
-                      PetListPage(),
-                    ),
-          const SizedBox(width: 10),
-          _buildCategoryButton(
-            context,
-            Icons.local_hospital,
-            'emergency \nservices',
-            EmergencyPage(),
           ),
         ],
       ),
@@ -170,7 +147,7 @@ class _HomePageForPetsState extends State<HomePageForPets> {
     );
   }
 
-  Widget _buildVeterinaryCard(BuildContext context, VetModel vet) {
+  Widget _buildVeterinaryCard(BuildContext context, VetModel vet, int index) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -178,10 +155,7 @@ class _HomePageForPetsState extends State<HomePageForPets> {
           MaterialPageRoute(
             builder: (context) => VetProfilePage(
               vet: vet,
-              onUpdate: (updatedVet) async {
-                await _firestore.collection('vets').doc(vet.id).update(updatedVet.toJson());
-              },
-              onBookAppointment: () {},
+              onUpdate: (updatedVet) => _updateVet(index, updatedVet), onBookAppointment: () {  },
             ),
           ),
         );
@@ -202,24 +176,26 @@ class _HomePageForPetsState extends State<HomePageForPets> {
           child: Column(
             children: [
               ClipOval(
-                child: vet.imagePath.isNotEmpty
-                    ? Image.network(
-                        vet.imagePath,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                      )
-                    : Image.asset(
-                        'assets/default_vet_image.png',
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                      ),
+                child:
+                    vet.imagePath.isNotEmpty && File(vet.imagePath).existsSync()
+                        ? Image.file(
+                            File(vet.imagePath),
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          )
+                        : Image.asset(
+                            'assets/default_vet_image.png',
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Dr. ${vet.name}',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
@@ -240,4 +216,4 @@ class _HomePageForPetsState extends State<HomePageForPets> {
       ),
     );
   }
-}
+} 

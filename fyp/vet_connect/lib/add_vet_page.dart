@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart'; // Import Firebase Storage
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -10,7 +10,8 @@ class AddVetPage extends StatefulWidget {
   final Function(VetModel) onSave;
   final VetModel? vet;
 
-  const AddVetPage({Key? key, required this.onSave, this.vet}) : super(key: key);
+  const AddVetPage({Key? key, required this.onSave, this.vet})
+      : super(key: key);
 
   @override
   _AddVetPageState createState() => _AddVetPageState();
@@ -26,20 +27,26 @@ class _AddVetPageState extends State<AddVetPage> {
   late TextEditingController _websiteController;
   late TextEditingController _phoneController;
   late TextEditingController _emailController;
+  late TextEditingController _feeController;
   File? _selectedImage;
   bool _isEmergencyAvailable = false;
+  List<TimeOfDay> selectedSlots = [];
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.vet?.name ?? '');
-    _descriptionController = TextEditingController(text: widget.vet?.description ?? '');
+    _descriptionController =
+        TextEditingController(text: widget.vet?.description ?? '');
     _addressController = TextEditingController(text: widget.vet?.address ?? '');
-    _openingTimeController = TextEditingController(text: widget.vet?.openingTime ?? '');
-    _closingTimeController = TextEditingController(text: widget.vet?.closingTime ?? '');
+    _openingTimeController =
+        TextEditingController(text: widget.vet?.openingTime ?? '');
+    _closingTimeController =
+        TextEditingController(text: widget.vet?.closingTime ?? '');
     _websiteController = TextEditingController(text: widget.vet?.website ?? '');
     _phoneController = TextEditingController(text: widget.vet?.phone ?? '');
     _emailController = TextEditingController(text: widget.vet?.email ?? '');
+    _feeController = TextEditingController(); // New fee controller
     _isEmergencyAvailable = widget.vet?.isEmergencyAvailable ?? false;
   }
 
@@ -60,10 +67,15 @@ class _AddVetPageState extends State<AddVetPage> {
     final firestore = FirebaseFirestore.instance;
 
     try {
-      final imageUrl = _selectedImage != null ? await _uploadImage(_selectedImage!) : null;
+      final imageUrl =
+          _selectedImage != null ? await _uploadImage(_selectedImage!) : null;
 
       final vetData = vet.toJson();
       if (imageUrl != null) vetData['imageUrl'] = imageUrl;
+      vetData['fee'] = int.tryParse(_feeController.text) ?? 0; // Save fee
+      vetData['availableSlots'] = selectedSlots
+          .map((slot) => slot.format(context))
+          .toList(); // Save selected slots
 
       await firestore.collection('vets').add(vetData);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -89,7 +101,8 @@ class _AddVetPageState extends State<AddVetPage> {
         website: _websiteController.text,
         phone: _phoneController.text,
         email: _emailController.text,
-        isEmergencyAvailable: _isEmergencyAvailable, imagePath: '',
+        isEmergencyAvailable: _isEmergencyAvailable,
+        imagePath: '',
       );
 
       _saveToFirestore(newVet);
@@ -172,44 +185,67 @@ class _AddVetPageState extends State<AddVetPage> {
                 },
               ),
               TextFormField(
-                controller: _openingTimeController,
-                decoration: const InputDecoration(labelText: 'Opening Time'),
-                readOnly: true,
-                onTap: _pickOpeningTime,
-              ),
-              TextFormField(
-                controller: _closingTimeController,
-                decoration: const InputDecoration(labelText: 'Closing Time'),
-                readOnly: true,
-                onTap: _pickClosingTime,
-              ),
-              TextFormField(
-                controller: _websiteController,
+                controller: _websiteController, // Website field
                 decoration: const InputDecoration(labelText: 'Website'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a website';
+                  }
+                  return null;
+                },
               ),
               TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(labelText: 'Phone'),
-                keyboardType: TextInputType.phone,
+                controller: _phoneController, // Phone number field
+                decoration: const InputDecoration(labelText: 'Phone Number'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a phone number';
+                  }
+                  return null;
+                },
               ),
               TextFormField(
-                controller: _emailController,
+                controller: _emailController, // Email field
                 decoration: const InputDecoration(labelText: 'Email'),
-                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter an email';
+                  }
+                  return null;
+                },
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Emergency Available'),
-                  Switch(
-                    value: _isEmergencyAvailable,
-                    onChanged: (value) {
+              TextFormField(
+                controller: _feeController, // New fee field
+                decoration: const InputDecoration(labelText: 'Fee'),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Available Time Slots:',
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              Wrap(
+                spacing: 8,
+                children: List.generate(17, (index) {
+                  final hour = 8 + index; // 8 AM to 12 Midnight
+                  final timeSlot = TimeOfDay(hour: hour % 24, minute: 0);
+                  final isSelected = selectedSlots.contains(timeSlot);
+
+                  return ChoiceChip(
+                    label: Text(timeSlot.format(context)),
+                    selected: isSelected,
+                    onSelected: (selected) {
                       setState(() {
-                        _isEmergencyAvailable = value;
+                        if (selected) {
+                          selectedSlots.add(timeSlot);
+                        } else {
+                          selectedSlots.remove(timeSlot);
+                        }
                       });
                     },
-                  ),
-                ],
+                  );
+                }),
               ),
               const SizedBox(height: 20),
               ElevatedButton(

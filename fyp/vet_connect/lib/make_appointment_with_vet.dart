@@ -93,7 +93,7 @@ class _MakeAppointmentWithVetPageState
           vetName: vetName,
           dateTime: selectedDateTime,
           fee: vetFee,
-          vetId: widget.vetId,
+          vetId: widget.vetId, petOwnerEmail: '',
         ),
       ),
     );

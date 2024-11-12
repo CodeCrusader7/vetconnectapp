@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
+import 'package:vet_connect/pet_records.dart';
+
 
 class PetProfilePage extends StatelessWidget {
   final String image;
@@ -11,15 +12,17 @@ class PetProfilePage extends StatelessWidget {
   final String color;
   final String breed;
 
-  const PetProfilePage(
-      {super.key, required this.image,
-      required this.name,
-      required this.type,
-      required this.age,
-      required this.gender,
-      required this.weight,
-      required this.color,
-      required this.breed});
+  const PetProfilePage({
+    Key? key,
+    required this.image,
+    required this.name,
+    required this.type,
+    required this.age,
+    required this.gender,
+    required this.weight,
+    required this.color,
+    required this.breed,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -52,21 +55,21 @@ class PetProfilePage extends StatelessWidget {
               ),
             const SizedBox(height: 16),
             Text(
-              name ?? 'Pet Name',
+              name,
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              type ?? 'Pet Type',
+              type,
               style: const TextStyle(fontSize: 18, color: Colors.purple),
             ),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildInfoCard('Age', age ?? ''),
-                _buildInfoCard('Gender', gender ?? ''),
-                _buildInfoCard('Weight', weight ?? ''),
+                _buildInfoCard('Age', age),
+                _buildInfoCard('Gender', gender),
+                _buildInfoCard('Weight', weight),
               ],
             ),
             const SizedBox(height: 24),
@@ -75,8 +78,22 @@ class PetProfilePage extends StatelessWidget {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            _buildAdditionalInfo('Color', color ?? ''),
-            _buildAdditionalInfo('Breed', breed ?? ''),
+            _buildAdditionalInfo('Color', color),
+            _buildAdditionalInfo('Breed', breed),
+            const SizedBox(height: 32),
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PetRecordsPage(petId: name),  // Pass any necessary identifier
+                    ),
+                  );
+                },
+                child: const Text("Medical Records"),
+              ),
+            ),
           ],
         ),
       ),

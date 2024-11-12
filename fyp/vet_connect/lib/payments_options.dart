@@ -1,23 +1,25 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:vet_connect/online_payment.dart';
+import 'package:flutter/material.dart';
 
 class PaymentOptionsPage extends StatelessWidget {
   final String vetName;
   final DateTime dateTime;
   final int fee;
   final String vetId;
-  String? appointmentId;
+  final String petOwnerEmail;  // Add email of the pet owner
 
   PaymentOptionsPage({
     required this.vetName,
     required this.dateTime,
     required this.fee,
     required this.vetId,
+    required this.petOwnerEmail,  // Pass the email of the pet owner
   });
 
   Future<void> _saveAppointment(String paymentMethod, BuildContext context) async {
     final appointmentRef = FirebaseFirestore.instance.collection('appointments').doc();
     
+    // Set appointment data
     await appointmentRef.set({
       'vetId': vetId,
       'vetName': vetName,
@@ -25,7 +27,9 @@ class PaymentOptionsPage extends StatelessWidget {
       'time': TimeOfDay.fromDateTime(dateTime).format(context),
       'fee': fee,
       'paymentMethod': paymentMethod,
-      'paymentStatus': paymentMethod == "Pay at Clinic" ? "Confirmed" : "Pending",
+      'paymentStatus': 'Confirmed', // Confirm appointment directly
+      'petOwnerEmail': petOwnerEmail,  // Store pet owner's email
+      'status': 'confirmed', // Set the status to confirmed
     });
 
     // Navigate to confirmation screen or show confirmation
@@ -60,12 +64,7 @@ class PaymentOptionsPage extends StatelessWidget {
             Text("Fee: $fee Rs", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 30),
             ElevatedButton(
-              onPressed: () => _saveAppointment("Online Payment", context),
-              child: const Text("Online Payment"),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => _saveAppointment("Pay at Clinic", context),
+              onPressed: () => _saveAppointment("Pay at Clinic", context),  // Remove online payment option
               child: const Text("Pay at Clinic"),
             ),
           ],
