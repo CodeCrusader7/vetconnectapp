@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -10,8 +11,7 @@ class AddVetPage extends StatefulWidget {
   final Function(VetModel) onSave;
   final VetModel? vet;
 
-  const AddVetPage({Key? key, required this.onSave, this.vet})
-      : super(key: key);
+  const AddVetPage({super.key, required this.onSave, this.vet});
 
   @override
   _AddVetPageState createState() => _AddVetPageState();
@@ -20,10 +20,8 @@ class AddVetPage extends StatefulWidget {
 class _AddVetPageState extends State<AddVetPage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
-  late TextEditingController _addressController;
-  late TextEditingController _openingTimeController;
-  late TextEditingController _closingTimeController;
   late TextEditingController _descriptionController;
+  late TextEditingController _addressController;
   late TextEditingController _websiteController;
   late TextEditingController _phoneController;
   late TextEditingController _emailController;
@@ -31,6 +29,7 @@ class _AddVetPageState extends State<AddVetPage> {
   File? _selectedImage;
   bool _isEmergencyAvailable = false;
   List<TimeOfDay> selectedSlots = [];
+  String? _imageUrl;
 
   @override
   void initState() {
@@ -39,52 +38,69 @@ class _AddVetPageState extends State<AddVetPage> {
     _descriptionController =
         TextEditingController(text: widget.vet?.description ?? '');
     _addressController = TextEditingController(text: widget.vet?.address ?? '');
-    _openingTimeController =
-        TextEditingController(text: widget.vet?.openingTime ?? '');
-    _closingTimeController =
-        TextEditingController(text: widget.vet?.closingTime ?? '');
     _websiteController = TextEditingController(text: widget.vet?.website ?? '');
     _phoneController = TextEditingController(text: widget.vet?.phone ?? '');
     _emailController = TextEditingController(text: widget.vet?.email ?? '');
-    _feeController = TextEditingController(); // New fee controller
+    _feeController =
+        TextEditingController(text: widget.vet?.fee.toString() ?? '');
     _isEmergencyAvailable = widget.vet?.isEmergencyAvailable ?? false;
+    _imageUrl = widget.vet?.imagePath ?? null;
   }
 
-  Future<String?> _uploadImage(File imageFile) async {
+  Future<void> _uploadImage(File imageFile, String vetId) async {
     try {
-      final storageRef = FirebaseStorage.instance
-          .ref()
-          .child('vet_images/${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final storageRef =
+          FirebaseStorage.instance.ref().child('vet_images/$vetId.jpg');
       await storageRef.putFile(imageFile);
-      return await storageRef.getDownloadURL();
+      String imageUrl = await storageRef.getDownloadURL();
+
+      setState(() {
+        _imageUrl = imageUrl;
+      });
     } catch (e) {
       print('Error uploading image: $e');
-      return null;
     }
   }
 
   Future<void> _saveToFirestore(VetModel vet) async {
     final firestore = FirebaseFirestore.instance;
+    final auth = FirebaseAuth.instance;
+    final User? user = auth.currentUser;
+
+    if (user == null) {
+      if (!mounted) return; // ✅ Check if widget is still in the tree
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not authenticated! Please log in.')),
+      );
+      return;
+    }
+
+    final vetId = user.uid;
 
     try {
-      final imageUrl =
-          _selectedImage != null ? await _uploadImage(_selectedImage!) : null;
+      if (_selectedImage != null) {
+        await _uploadImage(_selectedImage!, vetId);
+      }
 
       final vetData = vet.toJson();
-      if (imageUrl != null) vetData['imageUrl'] = imageUrl;
-      vetData['fee'] = int.tryParse(_feeController.text) ?? 0; // Save fee
-      vetData['availableSlots'] = selectedSlots
-          .map((slot) => slot.format(context))
-          .toList(); // Save selected slots
+      vetData['imageUrl'] = _imageUrl ?? '';
+      vetData['fee'] = int.tryParse(_feeController.text) ?? 0;
+      vetData['availableSlots'] =
+          selectedSlots.map((slot) => slot.format(context)).toList();
+      vetData['isEmergencyAvailable'] = _isEmergencyAvailable;
 
-      await firestore.collection('vets').add(vetData);
+      await firestore.collection('vets').doc(vetId).set(vetData);
+
+      if (!mounted)
+        return; // ✅ Prevent calling context-related code after unmount
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Vet saved successfully!')),
+        const SnackBar(content: Text('Vet saved successfully!')),
       );
     } catch (e) {
       print('Error saving vet: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save vet. Please try again.')),
+        const SnackBar(content: Text('Failed to save vet. Please try again.')),
       );
     }
   }
@@ -92,17 +108,19 @@ class _AddVetPageState extends State<AddVetPage> {
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       final newVet = VetModel(
-        id: '', // Firestore will generate an ID
+        id: '',
         name: _nameController.text,
         description: _descriptionController.text,
         address: _addressController.text,
-        openingTime: _openingTimeController.text,
-        closingTime: _closingTimeController.text,
         website: _websiteController.text,
         phone: _phoneController.text,
         email: _emailController.text,
         isEmergencyAvailable: _isEmergencyAvailable,
-        imagePath: '',
+        imagePath: _imageUrl ?? '',
+        openingTime: '',
+        closingTime: '',
+        timeSlots: [],
+        imageUrl: '',
       );
 
       _saveToFirestore(newVet);
@@ -134,11 +152,18 @@ class _AddVetPageState extends State<AddVetPage> {
           key: _formKey,
           child: ListView(
             children: [
+              TextFormField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(labelText: 'Description'),
+                maxLines: 3,
+                validator: (value) =>
+                    value!.isEmpty ? 'Please enter a description' : null,
+              ),
+              const SizedBox(height: 10),
               if (_selectedImage != null)
-                Image.file(
-                  _selectedImage!,
-                  height: 200,
-                ),
+                Image.file(_selectedImage!, height: 200)
+              else if (_imageUrl != null && _imageUrl!.isNotEmpty)
+                Image.network(_imageUrl!, height: 200),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -154,94 +179,67 @@ class _AddVetPageState extends State<AddVetPage> {
               ),
               const SizedBox(height: 16),
               TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
-                maxLines: 3,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a description';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(labelText: 'Name'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a name';
-                  }
-                  return null;
-                },
+                validator: (value) =>
+                    value!.isEmpty ? 'Please enter a name' : null,
               ),
               TextFormField(
                 controller: _addressController,
                 decoration: const InputDecoration(labelText: 'Address'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter an address';
-                  }
-                  return null;
-                },
               ),
               TextFormField(
-                controller: _websiteController, // Website field
+                controller: _websiteController,
                 decoration: const InputDecoration(labelText: 'Website'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a website';
-                  }
-                  return null;
-                },
               ),
               TextFormField(
-                controller: _phoneController, // Phone number field
+                controller: _phoneController,
                 decoration: const InputDecoration(labelText: 'Phone Number'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a phone number';
-                  }
-                  return null;
-                },
+                keyboardType: TextInputType.phone,
               ),
               TextFormField(
-                controller: _emailController, // Email field
+                controller: _emailController,
                 decoration: const InputDecoration(labelText: 'Email'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter an email';
-                  }
-                  return null;
-                },
+                keyboardType: TextInputType.emailAddress,
               ),
               TextFormField(
-                controller: _feeController, // New fee field
+                controller: _feeController,
                 decoration: const InputDecoration(labelText: 'Fee'),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 16),
-              Text(
-                'Available Time Slots:',
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Emergency Available',
+                      style: TextStyle(fontSize: 16)),
+                  Switch(
+                    value: _isEmergencyAvailable,
+                    activeColor: Colors.green,
+                    inactiveTrackColor: Colors.red.shade300,
+                    onChanged: (bool value) {
+                      setState(() {
+                        _isEmergencyAvailable = value;
+                      });
+                    },
+                  ),
+                ],
               ),
+              const SizedBox(height: 16),
+              const Text('Time Slots:',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               Wrap(
                 spacing: 8,
-                children: List.generate(17, (index) {
-                  final hour = 8 + index; // 8 AM to 12 Midnight
-                  final timeSlot = TimeOfDay(hour: hour % 24, minute: 0);
-                  final isSelected = selectedSlots.contains(timeSlot);
-
+                children: List.generate(19, (index) {
+                  final timeSlot = TimeOfDay(hour: 6 + index, minute: 0);
                   return ChoiceChip(
                     label: Text(timeSlot.format(context)),
-                    selected: isSelected,
+                    selected: selectedSlots.contains(timeSlot),
                     onSelected: (selected) {
                       setState(() {
-                        if (selected) {
-                          selectedSlots.add(timeSlot);
-                        } else {
-                          selectedSlots.remove(timeSlot);
-                        }
+                        selected
+                            ? selectedSlots.add(timeSlot)
+                            : selectedSlots.remove(timeSlot);
                       });
                     },
                   );

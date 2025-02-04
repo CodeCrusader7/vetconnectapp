@@ -1,9 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:vet_connect/homepage.dart';
+import 'package:vet_connect/home_page_for_pets.dart';
+import 'package:vet_connect/login_page.dart';
+import 'auth_services.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -18,9 +18,11 @@ class _SignupPageState extends State<SignupPage> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  FirebaseAuth auth = FirebaseAuth.instance;
+  String? _selectedRole;
   bool _passwordVisible = false;
   String? _phoneError;
+
+  final AuthService _authService = AuthService(); // Instance of AuthService
 
   @override
   void dispose() {
@@ -31,6 +33,7 @@ class _SignupPageState extends State<SignupPage> {
     super.dispose();
   }
 
+  // Validation Functions
   String? _validateUsername(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter a username';
@@ -76,10 +79,53 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
+  Future<void> _signUp() async {
+    _validatePhone();
+
+    if (signUpFormKey.currentState!.validate() &&
+        _phoneError == null &&
+        _selectedRole != null) {
+      try {
+        // Use AuthService to handle signup
+        String result = await _authService.signUpUser(
+          name: _usernameController.text.trim(),
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+          role: _selectedRole!,
+        );
+
+        if (result == "User created successfully.") {
+          // Navigate to the appropriate home page based on user type
+          if (_selectedRole == 'Vet') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginPage()),
+            );
+          } else if (_selectedRole == 'Pet') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginPage()),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result)),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error during signup: ${e.toString()}')),
+        );
+      }
+    } else if (_selectedRole == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a role (Vet or Pet)')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final FirebaseFirestore firestore = FirebaseFirestore.instance;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Signup Page'),
@@ -99,39 +145,18 @@ class _SignupPageState extends State<SignupPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Connect with your friends today!',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                  ),
-                ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _usernameController,
-                  textInputAction: TextInputAction.next,
-                  keyboardType: TextInputType.text,
                   decoration: const InputDecoration(
                     labelText: 'Enter Your Username',
                     border: OutlineInputBorder(),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a username';
-                    } else if (value.length < 3) {
-                      return 'Username must be at least 3 characters long';
-                    } else if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
-                      return 'Username can only contain alphanumeric characters and underscores';
-                    }
-                    return null;
-                  },
+                  validator: _validateUsername,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _emailController,
-                  textInputAction: TextInputAction.next,
-                  keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
                     labelText: 'Enter Your Email',
                     border: OutlineInputBorder(),
@@ -141,25 +166,21 @@ class _SignupPageState extends State<SignupPage> {
                 const SizedBox(height: 16),
                 IntlPhoneField(
                   controller: _phoneController,
-                  textInputAction: TextInputAction.done,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Enter Your Phone Number',
-                    border: const OutlineInputBorder(),
-                    errorText: _phoneError,
+                    border: OutlineInputBorder(),
                   ),
                   initialCountryCode: 'US',
                   onChanged: (phone) {
-                    print(phone.completeNumber);
                     _validatePhone();
                   },
                 ),
+                if (_phoneError != null)
+                  Text(_phoneError!, style: const TextStyle(color: Colors.red)),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _passwordController,
                   obscureText: !_passwordVisible,
-                  textInputAction: TextInputAction.done,
-                  keyboardType: TextInputType.visiblePassword,
                   decoration: InputDecoration(
                     labelText: 'Enter Your Password',
                     border: const OutlineInputBorder(),
@@ -179,49 +200,30 @@ class _SignupPageState extends State<SignupPage> {
                   validator: _validatePassword,
                 ),
                 const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () async {
-                    _validatePhone();
-                    if (signUpFormKey.currentState!.validate() &&
-                        _phoneError == null) {
-                      await auth
-                          .createUserWithEmailAndPassword(
-                              email: _emailController.text,
-                              password: _passwordController.text)
-                          .then(
-                        (value) {
-                          firestore
-                              .collection('users')
-                              .doc(auth.currentUser!.uid)
-                              .set(
-                            {
-                              'UserName': _usernameController.text,
-                              'Email': _emailController.text,
-                              'PhoneNumber': _phoneController.text
-                            },
-                          ).then((value) {
-                            Navigator.push<void>(
-                              context,
-                              MaterialPageRoute<void>(
-                                builder: (BuildContext context) => HomePage(),
-                              ),
-                            );
-                          }).onError((error, stackTrace) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(
-                                error.toString(),
-                              )),
-                            );
-                          });
-                        },
-                      );
-                      // Handle signup
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Processing Data')),
-                      );
-                    }
+                const Text('Sign up as:'),
+                RadioListTile<String>(
+                  title: const Text('Vet'),
+                  value: 'Vet',
+                  groupValue: _selectedRole,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedRole = value;
+                    });
                   },
+                ),
+                RadioListTile<String>(
+                  title: const Text('Pet'),
+                  value: 'Pet',
+                  groupValue: _selectedRole,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedRole = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _signUp,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
                     minimumSize: const Size(double.infinity, 50),
@@ -229,44 +231,12 @@ class _SignupPageState extends State<SignupPage> {
                   child: const Text('Sign Up'),
                 ),
                 const SizedBox(height: 16),
-                const Center(child: Text('Or With')),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    // Handle Facebook signup
-                  },
-                  icon: const Icon(Icons.facebook, color: Colors.white),
-                  label: const Text('Signup with Facebook'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    minimumSize: const Size(double.infinity, 50),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    // Handle Google signup
-                  },
-                  icon: const Icon(Icons.g_translate, color: Colors.white),
-                  label: const Text('Signup with Google'),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.black,
-                    backgroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 50),
-                  ),
-                ),
-                const SizedBox(height: 16),
                 Center(
                   child: TextButton(
                     onPressed: () {
                       Navigator.pushNamed(context, '/login');
                     },
-                    child: const Text(
-                      'Already have an account? Login',
-                      style: TextStyle(
-                        color: Colors.black,
-                      ),
-                    ),
+                    child: const Text('Already have an account? Login'),
                   ),
                 ),
               ],

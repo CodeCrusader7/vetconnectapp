@@ -8,7 +8,7 @@ class PaymentOptionsPage extends StatelessWidget {
   final String vetId;
   final String petOwnerEmail;  // Add email of the pet owner
 
-  PaymentOptionsPage({
+  const PaymentOptionsPage({super.key, 
     required this.vetName,
     required this.dateTime,
     required this.fee,
@@ -52,16 +52,16 @@ class PaymentOptionsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Payment Options"),
+        title: const Text("Payment Options"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text("Vet: $vetName", style: TextStyle(fontSize: 20)),
+            Text("Vet: $vetName", style: const TextStyle(fontSize: 20)),
             Text("Appointment Date: ${dateTime.toLocal().toString().split(' ')[0]}"),
             Text("Time: ${TimeOfDay.fromDateTime(dateTime).format(context)}"),
-            Text("Fee: $fee Rs", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text("Fee: $fee Rs", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 30),
             ElevatedButton(
               onPressed: () => _saveAppointment("Pay at Clinic", context),  // Remove online payment option

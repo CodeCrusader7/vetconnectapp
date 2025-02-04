@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:vet_connect/homepage.dart';
-import 'SignInPage.dart';
-import 'signup_page.dart';
-import 'vet_connect_painter.dart'; // Import the signup page
+import 'homepage.dart';
+import 'home_page_for_pets.dart';
+import 'vet_connect_painter.dart';
+import 'auth_services.dart'; // Import the AuthService class
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,29 +16,95 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final bool _isLoginButtonEnabled = false;
-  FirebaseAuth auth = FirebaseAuth.instance;
-  final loginFormKey = GlobalKey<FormState>();
-  // void _updateLoginButtonState() {
-  //   setState(() {
-  //     _isLoginButtonEnabled = _emailController.text.isNotEmpty &&
-  //         _passwordController.text.isNotEmpty;
-  //   });
-  // }
+  final _loginFormKey = GlobalKey<FormState>();
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   _emailController.addListener(_updateLoginButtonState);
-  //   _passwordController.addListener(_updateLoginButtonState);
-  // }
+  final AuthService _authService = AuthService(); // Instantiate AuthService
 
-  // @override
-  // void dispose() {
-  //   _emailController.dispose();
-  //   _passwordController.dispose();
-  //   super.dispose();
-  // }
+  // Handle login with email and password
+  Future<void> _loginWithEmailAndPassword() async {
+    if (_loginFormKey.currentState!.validate()) {
+      try {
+        final user = await _authService.loginWithEmailAndPassword(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
+
+        if (user != null) {
+          print("User logged in: ${user.uid}");
+
+          // Ensure the user is authenticated before querying Firestore
+          if (FirebaseAuth.instance.currentUser == null) {
+            print("Error: User authentication failed before Firestore query.");
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text('Authentication failed. Try again.')),
+            );
+            return;
+          }
+
+          FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get()
+              .then(
+            (DocumentSnapshot<Map<String, dynamic>> currentUserData) {
+              if (!currentUserData.exists) {
+                print("Firestore document not found for user: ${user.uid}");
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('User data not found.')),
+                );
+                return;
+              }
+
+              final String userType =
+                  currentUserData.data()?['role'] ?? 'Unknown';
+              print("User role: $userType");
+
+              // Navigate based on user role
+              if (userType == 'Vet') {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => const HomePage()),
+                );
+              } else {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                      builder: (context) => const HomePageForPets()),
+                );
+              }
+            },
+          ).catchError((error) {
+            print("Error fetching user data: $error");
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error fetching user data: $error')),
+            );
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login failed. Please try again.')),
+          );
+        }
+      } on FirebaseAuthException catch (e) {
+        String errorMessage;
+        if (e.code == 'user-not-found') {
+          errorMessage = 'No user found for this email.';
+        } else if (e.code == 'wrong-password') {
+          errorMessage = 'Incorrect password.';
+        } else {
+          errorMessage = 'Login failed. Please try again.';
+        }
+
+        print("FirebaseAuthException: $errorMessage");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage)),
+        );
+      } catch (e) {
+        print("Unexpected error: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +132,7 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
                 child: Form(
-                  key: loginFormKey,
+                  key: _loginFormKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -81,14 +147,13 @@ class _LoginPageState extends State<LoginPage> {
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
                           labelText: 'Email',
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
-                          if (value!.isEmpty) {
-                            return 'Enter Email';
+                          if (value == null || value.isEmpty) {
+                            return 'Enter your email';
                           }
                           return null;
                         },
@@ -102,84 +167,28 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         obscureText: true,
                         validator: (value) {
-                          if (value!.isEmpty) {
-                            return 'Enter Password';
+                          if (value == null || value.isEmpty) {
+                            return 'Enter your password';
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 20),
                       ElevatedButton(
-                        onPressed: () async {
-                          if (loginFormKey.currentState!.validate()) {
-                            await auth
-                                .signInWithEmailAndPassword(
-                              email: _emailController.text,
-                              password: _passwordController.text,
-                            )
-                                .then(
-                              (value) {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => SignInPage()),
-                                );
-                              },
-                            ).onError(
-                              (error, stackTrace) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text(
-                                    error.toString(),
-                                  )),
-                                );
-                              },
-                            );
-                          }
-                        },
+                        onPressed: _loginWithEmailAndPassword,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isLoginButtonEnabled
-                              ? Colors.purple
-                              : Colors.white,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 50, vertical: 15),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
-                            side: const BorderSide(color: Colors.purple),
                           ),
                         ),
-                        child: Text(
-                          "Log In",
-                          style: TextStyle(
-                            color: _isLoginButtonEnabled
-                                ? Colors.white
-                                : Colors.purple,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          // Handle Google sign-in
-                        },
-                        icon: const Icon(Icons.g_mobiledata),
-                        label: const Text("Log In With Google"),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 30, vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
+                        child: const Text("Log In"),
                       ),
                       const SizedBox(height: 10),
                       TextButton(
                         onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => SignupPage()),
-                          );
+                          Navigator.pushReplacementNamed(context, '/signup');
                         },
                         child: const Text("Don't have an account? Sign Up"),
                       ),

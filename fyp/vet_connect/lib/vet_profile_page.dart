@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
 import 'dart:io';
+
+import 'package:flutter/material.dart';
 
 import 'vet_model.dart';
 import 'add_vet_page.dart';
@@ -8,9 +9,12 @@ class VetProfilePage extends StatelessWidget {
   final VetModel vet;
   final Function(VetModel) onUpdate;
 
-  const VetProfilePage({super.key, 
+  const VetProfilePage({
+    super.key,
     required this.vet,
-    required this.onUpdate, required Null Function() onBookAppointment,
+    required this.onUpdate,
+    required Null Function() onBookAppointment,
+    required String vetId,
   });
 
   @override
@@ -58,6 +62,20 @@ class VetProfilePage extends StatelessWidget {
                           fit: BoxFit.cover,
                         ),
             ),
+            // vet.imageUrl.isNotEmpty
+            //       ? Image.network(
+            //           vet.imageUrl,
+            //           height: 300,
+            //           width: 400,
+            //           fit: BoxFit.cover,
+            //         )
+            //       : Image.asset(
+            //           'assets/default_vet_image.png',
+            //           height: 200,
+            //           width: 200,
+            //           fit: BoxFit.cover,
+            //         ),
+            // ),
             const SizedBox(height: 20),
             Container(
               padding: const EdgeInsets.all(8.0),
@@ -68,14 +86,16 @@ class VetProfilePage extends StatelessWidget {
               ),
               child: Text(
                 'Dr. ${vet.name}',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(8.0),
               decoration: BoxDecoration(
-                border: Border.all(color: const Color.fromARGB(255, 251, 251, 251)),
+                border:
+                    Border.all(color: const Color.fromARGB(255, 251, 251, 251)),
                 borderRadius: BorderRadius.circular(6.0),
               ),
               child: Row(

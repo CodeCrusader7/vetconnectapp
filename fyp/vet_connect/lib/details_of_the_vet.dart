@@ -5,7 +5,7 @@ import 'make_appointment_with_vet.dart';
 class DetailsOfTheVetPage extends StatelessWidget {
   final String vetId;
 
-  DetailsOfTheVetPage({required this.vetId});
+  const DetailsOfTheVetPage({super.key, required this.vetId});
 
   @override
   Widget build(BuildContext context) {
@@ -26,35 +26,63 @@ class DetailsOfTheVetPage extends StatelessWidget {
 
           final vet = snapshot.data!.data() as Map<String, dynamic>? ?? {};
           final vetName = vet['name'] ?? 'No name available';
-          final vetDescription = vet['description'] ?? 'No description available';
+          final vetDescription =
+              vet['description'] ?? 'No description available';
           final vetAddress = vet['address'] ?? 'No address available';
           final vetPhoneNumber = vet['phone'] ?? 'No phone number available';
           final vetEmail = vet['email'] ?? 'No email available';
           final vetImage = vet['imageUrl'];
           final fee = vet['fee'] ?? 'Not available';
-          final availableSlots = (vet['availableSlots'] as List<dynamic>?)?.cast<String>() ?? [];
+          final availableSlots =
+              (vet['availableSlots'] as List<dynamic>?)?.cast<String>() ?? [];
+          final bool isEmergencyAvailable =
+              vet['isEmergencyAvailable'] ?? false;
 
           return Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (vetImage != null)
+                if (vetImage != null && vetImage.isNotEmpty)
                   Center(
-                    child: Image.network(
-                      vetImage,
-                      height: 150,
-                      width: 150,
-                      fit: BoxFit.cover,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(75),
+                      child: Image.network(
+                        vetImage,
+                        height: 150,
+                        width: 150,
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 const SizedBox(height: 16),
-                Text(
-                  'Dr. $vetName',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Dr. $vetName',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        const Text(
+                          "Emergency:",
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 5),
+                        Icon(
+                          Icons.circle,
+                          color:
+                              isEmergencyAvailable ? Colors.green : Colors.red,
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -82,9 +110,9 @@ class DetailsOfTheVetPage extends StatelessWidget {
                   style: const TextStyle(fontSize: 16),
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   'Available Time Slots:',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 Wrap(
                   spacing: 8,
@@ -101,7 +129,8 @@ class DetailsOfTheVetPage extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => MakeAppointmentWithVetPage(vetId: vetId),
+                          builder: (context) =>
+                              MakeAppointmentWithVetPage(vetId: vetId),
                         ),
                       );
                     },

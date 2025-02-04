@@ -334,7 +334,7 @@ class _EditPetDetailsScreenState extends State<EditPetDetailsScreen> {
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                 ),
-                child: Text('Save'),
+                child: const Text('Save'),
               ),
             ],
           ),

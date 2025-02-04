@@ -1,15 +1,15 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:vet_connect/ChatScreenForVets.dart';
 import 'package:vet_connect/drawer.dart';
+import 'package:vet_connect/list_of_pets_with_appointment.dart';
 import 'PetListPage.dart';
-import 'appointment_schedules.dart';
-import 'online_consultation.dart';
 import 'emergency.dart';
 import 'vet_profile_page.dart'; // Import the VetProfilePage
 import 'add_vet_page.dart';
 import 'vet_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'list_of_pets_with_appointment.dart'; // Import the new page
-import 'dart:io';
+// Import the new page
 import 'appointments_for_vets.dart';
 
 class HomePage extends StatefulWidget {
@@ -24,31 +24,35 @@ class _HomePageState extends State<HomePage> {
 
   // Fetch vet data as a stream from Firestore
   Stream<List<VetModel>> _fetchVets() {
+    final userId =
+        FirebaseAuth.instance.currentUser!.uid; // Get current user UID
     return _firestore
         .collection('vets')
+        .where('userId', isEqualTo: userId) // Filter by UID
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) {
               var vet = VetModel.fromJson(doc.data());
-              vet.id =
-                  doc.id; // Assign document ID to vet for updating or deleting
+              vet.id = doc.id; // Assign document ID to vet
               return vet;
             }).toList());
   }
 
   void _addOrEditVet([VetModel? vet]) {
+    final userId =
+        FirebaseAuth.instance.currentUser!.uid; // Get current user UID
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => AddVetPage(
           onSave: (vet) async {
+            final vetData = vet.toJson();
+            vetData['userId'] = userId; // Add userId field
+
             if (vet.id.isNotEmpty) {
-              // Update the vet in Firestore
-              await _firestore
-                  .collection('vets')
-                  .doc(vet.id)
-                  .update(vet.toJson());
+              // Update vet
+              await _firestore.collection('vets').doc(vet.id).update(vetData);
             } else {
-              // Add a new vet to Firestore
-              await _firestore.collection('vets').add(vet.toJson());
+              // Add new vet
+              await _firestore.collection('vets').add(vetData);
             }
           },
           vet: vet,
@@ -181,28 +185,30 @@ class _HomePageState extends State<HomePage> {
                       context,
                       Icons.schedule,
                       'appointment\nschedules',
-                      AppointmentsForVetsPage(vetId: "sampleVetId"),
+                      const AppointmentsForVetsPage(vetId: "sampleVetId"),
                     ),
                     const SizedBox(width: 10),
                     _buildCategoryButton(
                       context,
                       Icons.chat,
                       'online\nconsultation',
-                      OnlineConsultationPage(),
+                      const EmergencyPage(),
                     ),
                     const SizedBox(width: 10),
                     _buildCategoryButton(
                       context,
                       Icons.pets,
                       'pet\nprofiles',
-                      PetListPage(),
+                      const ListOfPetsWithAppointmentPage(
+                        vetId: '',
+                      ),
                     ),
                     const SizedBox(width: 10),
                     _buildCategoryButton(
                       context,
                       Icons.local_hospital,
                       'emergency',
-                      EmergencyPage(),
+                      const EmergencyPage(),
                     ),
                   ],
                 ),
@@ -304,6 +310,7 @@ class _HomePageState extends State<HomePage> {
               vet: vet,
               onUpdate: (updatedVet) => _addOrEditVet(updatedVet),
               onBookAppointment: () {},
+              vetId: '',
             ),
           ),
         );

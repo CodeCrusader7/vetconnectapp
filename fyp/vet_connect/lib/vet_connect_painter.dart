@@ -34,13 +34,13 @@ class VetConnectPainter extends CustomPainter {
     canvas.drawPath(catPath, paintGradient);
 
     // Drawing the text
-    final textStyle1 = const TextStyle(
+    const textStyle1 = TextStyle(
       color: Colors.red,
       fontSize: 50,
       fontWeight: FontWeight.bold,
     );
 
-    final textStyle2 = const TextStyle(
+    const textStyle2 = TextStyle(
       color: Colors.black,
       fontSize: 20,
       fontWeight: FontWeight.normal,

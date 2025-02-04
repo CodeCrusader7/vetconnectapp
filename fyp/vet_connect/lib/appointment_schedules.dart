@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'details_of_the_vet.dart';
 
 class AppointmentSchedulesPage extends StatelessWidget {
+  const AppointmentSchedulesPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

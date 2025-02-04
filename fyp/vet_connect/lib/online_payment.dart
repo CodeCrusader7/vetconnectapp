@@ -7,7 +7,7 @@ class OnlinePaymentPage extends StatelessWidget {
   final int fee;
   final String appointmentId;
 
-  OnlinePaymentPage({
+  const OnlinePaymentPage({super.key, 
     required this.vetName,
     required this.dateTime,
     required this.fee,
@@ -43,18 +43,18 @@ class OnlinePaymentPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Online Payment"),
+        title: const Text("Online Payment"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text("Vet: $vetName", style: TextStyle(fontSize: 20)),
+            Text("Vet: $vetName", style: const TextStyle(fontSize: 20)),
             Text("Appointment Date: ${dateTime.toLocal().toString().split(' ')[0]}"),
             Text("Time: ${TimeOfDay.fromDateTime(dateTime).format(context)}"),
-            Text("Fee: $fee Rs", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text("Fee: $fee Rs", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 30),
-            Text("Select Payment Method", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text("Select Payment Method", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () => _completePayment("Credit/Debit Card"),

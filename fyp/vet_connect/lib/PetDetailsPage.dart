@@ -1,9 +1,9 @@
-import 'dart:ffi';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 
 class PetDetailsPage extends StatefulWidget {
@@ -21,6 +21,8 @@ class _PetDetailsPageState extends State<PetDetailsPage> {
   final picker = ImagePicker();
   final _petDetailFormKey = GlobalKey<FormState>();
   final FirebaseFirestore firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   final _nameController = TextEditingController();
   final _typeController = TextEditingController();
   final _ageController = TextEditingController();
@@ -28,12 +30,14 @@ class _PetDetailsPageState extends State<PetDetailsPage> {
   final _weightController = TextEditingController();
   final _colorController = TextEditingController();
   final _breedController = TextEditingController();
+
   String _category = 'Cat';
   String _gender = 'Male';
   String _weightUnit = 'kg';
   bool _isOtherCategory = false;
   firebase_storage.FirebaseStorage storage =
       firebase_storage.FirebaseStorage.instance;
+
   @override
   void initState() {
     super.initState();
@@ -65,23 +69,59 @@ class _PetDetailsPageState extends State<PetDetailsPage> {
     }
   }
 
-  void _savePet() {
+  void _savePet() async {
     if (_petDetailFormKey.currentState!.validate()) {
-      Map<String, String> updatedPet = {
-        'name': _nameController.text,
-        'type': _isOtherCategory ? _typeController.text : _category,
-        'age': _ageController.text,
-        'gender': _gender,
-        'weight': _weightController.text,
-        'weightUnit': _weightUnit,
-        'color': _colorController.text,
-        'breed': _breedController.text,
-      };
-      if (_image != null) {
-        updatedPet['imagePath'] = _image!.path;
+      // Get the current user's UID
+      final User? user = _auth.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please log in to save pet details.')),
+        );
+        return;
       }
-      widget.onSave(updatedPet);
-      Navigator.pop(context);
+
+      // Upload the image to Firebase Storage
+      if (_image == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select an image.')),
+        );
+        return;
+      }
+
+      try {
+        firebase_storage.Reference ref =
+            firebase_storage.FirebaseStorage.instance.ref('/petImages/${DateTime.now().microsecondsSinceEpoch}');
+        firebase_storage.UploadTask uploadTask = ref.putFile(_image!.absolute);
+        await Future.value(uploadTask);
+        String imageUrl = await ref.getDownloadURL();
+
+        // Save the pet details to Firestore
+        final String id = DateTime.now().microsecondsSinceEpoch.toString();
+        await firestore.collection('pets').doc(id).set(
+          {
+            'uid': user.uid, // Store the user's UID
+            'petName': _nameController.text,
+            'petCategory': _isOtherCategory ? _typeController.text : _category,
+            'petAge': _ageController.text,
+            'petGender': _gender,
+            'petWeight': _weightController.text,
+            'petWeightUnit': _weightUnit,
+            'petColor': _colorController.text,
+            'petBreed': _breedController.text,
+            'imagePath': imageUrl,
+            'id': id,
+          },
+        );
+
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Added New Pet')),
+        );
+      } catch (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving pet: $error')),
+        );
+      }
     }
   }
 
@@ -261,56 +301,11 @@ class _PetDetailsPageState extends State<PetDetailsPage> {
               ),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () async {
-                  if (_petDetailFormKey.currentState!.validate()) {
-                    firebase_storage.Reference ref = firebase_storage
-                        .FirebaseStorage.instance
-                        .ref('/petImage');
-                    firebase_storage.UploadTask uploadTask =
-                        ref.putFile(_image!.absolute);
-                    await Future.value(uploadTask).then((value) async {
-                      var newUrl = await ref.getDownloadURL();
-                      final String id =
-                          DateTime.now().microsecondsSinceEpoch.toString();
-                      await firestore.collection('pets').doc(id).set(
-                        {
-                          'petName': _nameController.text,
-                          'petCategory': _isOtherCategory
-                              ? _typeController.text
-                              : _category,
-                          'petAge': _ageController.text,
-                          'petGender': _gender,
-                          'petWeight': _weightController.text,
-                          'petWeightUnit': _weightUnit,
-                          'petColor': _colorController.text,
-                          'petBreed': _breedController.text,
-                          'imagePath': newUrl,
-                          'id': id,
-                        },
-                      ).then((value) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Added New Pet',
-                            ),
-                          ),
-                        );
-                      }).onError((error, stackTrace) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(
-                            error.toString(),
-                          )),
-                        );
-                      });
-                    });
-                  }
-                },
+                onPressed: _savePet,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                 ),
-                child: Text('Save'),
+                child: const Text('Save'),
               ),
             ],
           ),

@@ -17,18 +17,18 @@ class SplashServices {
         ),
         () => Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => HomePage()),
+          MaterialPageRoute(builder: (context) => const LoginPage()),
         ),
       );
     } else {
       Timer(
         const Duration(
-          seconds: 3,
+          seconds: 1,
         ),
         () {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => LoginPage()),
+            MaterialPageRoute(builder: (context) => const LoginPage()),
           );
         },
       );

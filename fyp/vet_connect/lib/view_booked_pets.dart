@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class ViewBookedPetPage extends StatelessWidget {
   final String petId;
 
-  const ViewBookedPetPage({Key? key, required this.petId}) : super(key: key);
+  const ViewBookedPetPage({super.key, required this.petId});
 
   Future<Map<String, dynamic>?> _fetchPetDetails() async {
     // Fetch pet details from Firebase
